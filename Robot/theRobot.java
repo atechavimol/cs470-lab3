@@ -411,8 +411,8 @@ public class theRobot extends JFrame {
     //       For example, the sonar string 1001, specifies that the sonars found a wall in the North and West directions, but not in the South and East directions
     void updateProbabilities(int action, String sonars) {
 
-        moveProb = .99;
-        sensorAccuracy = .99;
+        moveProb = .8;
+        sensorAccuracy = .8;
 
 
         //bel Prime
@@ -430,7 +430,7 @@ public class theRobot extends JFrame {
                     directionCoordinates.put(2, new int[]{i - 1, j});
                     directionCoordinates.put(3, new int[]{i + 1, j});
                     directionCoordinates.put(4, new int[]{i, j});
-
+        
                     for (Integer key: directionCoordinates.keySet()) {
                         int x = directionCoordinates.get(key)[0];
                         int y = directionCoordinates.get(key)[1];
@@ -518,7 +518,7 @@ public class theRobot extends JFrame {
         }
 
         
-        return getEV(cur_x, cur_y);  // default action for now
+        return getEV(cur_x, cur_y);  
     }
 
     int getEV(int j, int i) {
@@ -526,49 +526,41 @@ public class theRobot extends JFrame {
         double max_EV = Double.NEGATIVE_INFINITY;
         int bestMove = SOUTH;
         
-        int[][] adjustments = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}, {0,0}};// N S E W Stay
+        int[][] adjustments = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};// N S E W Stay
         
         for (int z = 0; z < adjustments.length; z++) {
             int newCol= j + adjustments[z][0];
             int newRow = i + adjustments[z][1];
-            
+
             if (Vs[newCol][newRow] > max_EV) {
                 max_EV = Vs[newCol][newRow];
                 bestMove  = z;
             }
-        }
 
+        }
         return bestMove;
     }
 
     void valueIteration(){
         double[][] valIter = new double[mundo.width][mundo.height];
-        
 
         for (int i = 0; i < mundo.width; i++) {
             for (int j = 0; j < mundo.height; j++) {
                 if (mundo.grid[j][i] == 0) { //open space
-                    valIter[j][i] = -1.0;
-                }
-                else if (mundo.grid[j][i] == 2) { //stairwell
-                    valIter[j][i] = -1000.0;
+                    valIter[j][i] = -1;
+                } else if (mundo.grid[j][i] == 2) { //stairwell
+                    valIter[j][i] = -100.0;
                 } else if (mundo.grid[j][i] == 1) { //wall
-                    valIter[j][i] = -10;           
+                    valIter[j][i] = -10;   
                 } else if (mundo.grid[j][i] == 3){ //goal
-                    valIter[j][i] = 100.0;
+                    valIter[j][i] = 1000;
                 }
             }
         }
 
-        // for (int i = 0; i < mundo.width; i++) {
-        //     for (int j = 0; j < mundo.height; j++) {
-        //         System.out.print(valIter[i][j] + " ");
-        //     }
-        //     System.out.println(); // Move to the next row
-        // }
 
-        double discount = .75;
-        double convergence = 1.0;
+        double discount = .9;
+        double convergence = .02;
         boolean convergenceReached = false;
 
         while(!convergenceReached) {
@@ -577,62 +569,46 @@ public class theRobot extends JFrame {
 
             for (int i = 0; i < mundo.height; i++) {
                 for (int j = 0; j < mundo.width; j++) {
-                    if (mundo.grid[j][i] == 1) {
-                        continue;
-                    } else {
+                   
                         double maxUtil = Double.NEGATIVE_INFINITY;
 
-
+                        if (mundo.grid[j][i] != 0 ) {
+                            newValIter[j][i] = valIter[j][i];
+                            continue; // ignore walls, stairwells, and goal states
+                        }
                         //up
-                        if (mundo.grid[j][i - 1] != 1){
+                        if ((i - 1) >= 0){
                             maxUtil = Math.max(discount * valIter[j][i - 1], maxUtil);
                         }
 
                         //left
-                        if (mundo.grid[j - 1][i] != 1){
+                        if ((j - 1) >= 0){
                             maxUtil = Math.max(discount * valIter[j - 1][i], maxUtil);
                         }
 
                         //right
-                        if (mundo.grid[j + 1][i] != 1){
+                        if ((j + 1) < mundo.height){
                             maxUtil = Math.max(discount * valIter[j + 1][i], maxUtil);
                         }
                         
                         //down
-                        if (mundo.grid[j][i + 1] != 1){
+                        if ((i + 1) < mundo.height){
                             maxUtil = Math.max(discount * valIter[j][i + 1], maxUtil);
                         }
                         
-                        if ((maxUtil - valIter[j][i]) > convergence) {
+
+                        newValIter[j][i] = maxUtil;
+
+                         if (Math.abs(newValIter[j][i] - valIter[j][i]) > convergence) {
                             convergenceReached = false;
                         }
-
-                        newValIter[j][i] = valIter[j][i] + maxUtil;
-
                     }
-                }
+                                    
                 
             }
             valIter = newValIter;
-
-            // for (int i = 0; i < mundo.width; i++) {
-            //     for (int j = 0; j < mundo.height; j++) {
-            //         System.out.print(valIter[j][i] + " ");
-            //     }
-            //     System.out.println(); // Move to the next row
-            // }
-
-
-            // System.out.println("\n\n\n Grid\n");
-            // for (int i = 0; i < mundo.width; i++) {
-            //     for (int j = 0; j < mundo.height; j++) {
-            //         System.out.print(mundo.grid[j][i] + " " + j + ":" + i + ", ");
-            //     }
-            //     System.out.println(); // Move to the next row
-            // }
-
-
-
+         //   System.out.println(newValIter[1][1]);
+        
         }
 
         System.out.println("\n\n\n Convergence! \n");
